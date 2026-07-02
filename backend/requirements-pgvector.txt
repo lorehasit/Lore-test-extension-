@@ -1,0 +1,5 @@
+# Install ONLY when using VECTOR_STORE=pgvector (hosted Postgres / Supabase / Neon):
+#   pip install -r requirements-pgvector.txt
+# Kept separate from requirements.txt so the default (Qdrant) install stays light
+# and never blocks on a psycopg wheel for your Python version.
+psycopg[binary]>=3.1

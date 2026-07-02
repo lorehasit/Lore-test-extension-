@@ -1,0 +1,55 @@
+{
+  "name": "lore",
+  "displayName": "Lore — decision memory",
+  "description": "Ask /why any technical decision was made and get the real reasoning, with sources — inside VS Code.",
+  "version": "0.1.0",
+  "publisher": "lore",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/lorehasit/Lore-test-extension-.git" },
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other", "Machine Learning"],
+  "main": "./out/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "lore", "title": "Lore", "icon": "media/lore-icon.svg" }
+      ]
+    },
+    "views": {
+      "lore": [
+        { "id": "lore.chat", "type": "webview", "name": "Ask /why" }
+      ]
+    },
+    "commands": [
+      { "command": "lore.askWhy", "title": "Lore: Recall a decision…" },
+      { "command": "lore.whyThis", "title": "Lore: Why is this here?" },
+      { "command": "lore.loadDemo", "title": "Lore: Seed the Canon (demo)" }
+    ],
+    "menus": {
+      "editor/context": [
+        { "command": "lore.whyThis", "when": "editorHasSelection", "group": "navigation@9" }
+      ]
+    },
+    "configuration": {
+      "title": "Lore",
+      "properties": {
+        "lore.backendUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "URL of the Lore backend service (FastAPI)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,32 @@
+# Render Blueprint — deploys the Lore backend as a web service.
+#
+# In Render:  New +  →  Blueprint  →  connect this repo.
+# Render reads this file, provisions the service, and prompts you for the two
+# secrets marked `sync: false` (your Groq key and Neon connection string).
+services:
+  - type: web
+    name: lore-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt -r requirements-pgvector.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      # Pin a Render-supported Python (3.14 is too new for the platform).
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      # Non-secret config (safe to commit):
+      - key: VECTOR_STORE
+        value: pgvector
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      - key: EMBEDDER_MODEL
+        value: BAAI/bge-small-en-v1.5
+      - key: EMBEDDER_DIMS
+        value: "384"
+      # Secrets — entered in the Render dashboard, never committed:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false

@@ -1,0 +1,20 @@
+# --- Secrets ---
+.env
+backend/.env
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# --- Local Canon (the dev vector store lives here) ---
+backend/qdrant_data/
+
+# --- Node / VS Code extension ---
+node_modules/
+extension/out/
+*.vsix
+
+# --- Scribe per-repo config (created in target repos, not this one) ---
+.lore.json

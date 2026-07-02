@@ -13,6 +13,8 @@ mem0 and groq are imported lazily so mock mode has no heavy dependencies.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
 import re
 import time
@@ -31,6 +33,7 @@ EMBEDDER_MODEL = os.getenv("EMBEDDER_MODEL", "thenlper/gte-large").strip()
 # (1536) collides with it. gte-large=1024, bge-small-en-v1.5=384, bge-base=768.
 EMBEDDER_DIMS = int(os.getenv("EMBEDDER_DIMS", "1024").strip())
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "").strip()
+GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET", "").strip()
 
 # Where the Canon (vector memory) lives. "qdrant" = local file (offline dev);
 # "pgvector" = hosted Postgres (the shared team brain) via DATABASE_URL.
@@ -186,6 +189,51 @@ def inscribe_commit(commit: dict, user_id: str = "demo") -> dict:
         "canon": canon,
     })
     return {"mode": "live", "inscribed": True, "provenance": f"commit {sha}"}
+
+
+def verify_github_signature(raw: bytes, signature_header: str) -> bool:
+    """Confirm a webhook really came from GitHub: HMAC-SHA256 over the raw body,
+    keyed by the webhook secret. If no secret is configured (local dev), skip."""
+    if not GITHUB_WEBHOOK_SECRET:
+        return True
+    if not signature_header.startswith("sha256="):
+        return False
+    expected = "sha256=" + hmac.new(
+        GITHUB_WEBHOOK_SECRET.encode(), raw, hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature_header)
+
+
+def handle_pull_request_event(payload: dict, user_id: str = "demo") -> dict:
+    """Capture a merged pull request into the Canon. Called by the GitHub App
+    webhook. Only merged PRs are inscribed (a merge = a finalized decision)."""
+    action = payload.get("action")
+    pr = payload.get("pull_request") or {}
+    if action != "closed" or not pr.get("merged", False):
+        return {"ok": True, "captured": False,
+                "reason": f"action={action}, merged={pr.get('merged')}"}
+
+    repo = (payload.get("repository") or {}).get("full_name", "")
+    number = pr.get("number")
+    title = pr.get("title", "")
+    body = (pr.get("body") or "").strip()
+    author = (pr.get("user") or {}).get("login", "")
+    url = pr.get("html_url", "")
+    text = f"PR #{number}: {title}" + (f"\n\n{body}" if body else "")
+
+    if MODE == "mock":
+        return {"ok": True, "captured": False, "mode": "mock",
+                "pr": number, "note": "set GROQ_API_KEY to capture"}
+
+    mem = get_memory()
+    mem.add(text, user_id=user_id, infer=False, metadata={
+        "source": f"PR #{number}",
+        "title": title[:80],
+        "author": author,
+        "canon": repo,
+        "url": url,
+    })
+    return {"ok": True, "captured": True, "pr": number, "repo": repo}
 
 
 def search_canon(query: str, user_id: str = "demo", limit: int = 8) -> dict:

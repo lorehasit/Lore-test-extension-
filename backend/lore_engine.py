@@ -72,11 +72,38 @@ def _vector_store_config():
     }
 
 
+_np_vector_adapter_done = False
+
+
+def _register_numpy_vector_adapter():
+    """psycopg3 can't hand a raw NumPy array to Postgres, but our local embedder
+    (fastembed) returns NumPy arrays. Register a dumper that serialises them to
+    pgvector's text form (`[1,2,3]`) so mem0's pgvector store accepts them."""
+    global _np_vector_adapter_done
+    if _np_vector_adapter_done:
+        return
+    try:
+        import numpy as np
+        import psycopg
+        from psycopg.adapt import Dumper
+
+        class _NumpyVectorDumper(Dumper):
+            def dump(self, obj):
+                return b"[" + b",".join(repr(float(x)).encode() for x in obj.tolist()) + b"]"
+
+        psycopg.adapters.register_dumper(np.ndarray, _NumpyVectorDumper)
+        _np_vector_adapter_done = True
+    except Exception:
+        pass
+
+
 def get_memory():
     """Build the mem0 Memory on first use. LLM and embedder are independent,
     swappable knobs — moving Groq -> Claude later touches only the `llm` block."""
     global _memory
     if _memory is None:
+        if VECTOR_STORE == "pgvector":
+            _register_numpy_vector_adapter()
         from mem0 import Memory  # imported lazily; heavy
 
         config = {
@@ -152,7 +179,7 @@ def inscribe_commit(commit: dict, user_id: str = "demo") -> dict:
                 "note": "mock mode does not persist — set GROQ_API_KEY to inscribe"}
 
     mem = get_memory()
-    mem.add(text, user_id=user_id, metadata={
+    mem.add(text, user_id=user_id, infer=False, metadata={
         "source": f"commit {sha}",
         "title": subject[:80],
         "author": author,
@@ -206,7 +233,9 @@ def ingest_seed(user_id: str = "demo") -> dict:
     n = 0
     for d in SEED_DECISIONS:
         source = d["sources"][0][1] if d["sources"] else d["title"]
-        mem.add(d["answer"], user_id=user_id,
+        # infer=False: store our already-clean text verbatim, skipping mem0's
+        # heavy LLM extraction (which blows the free-tier token/min limit).
+        mem.add(d["answer"], user_id=user_id, infer=False,
                 metadata={"source": source, "title": d["title"], "area": d["meta"]})
         n += 1
     return {"mode": "live", "ingested": n}
@@ -238,7 +267,7 @@ def ingest_repo(owner: str, repo: str, user_id: str = "demo", limit: int = 25) -
             continue
         body = (pr.get("body") or "").strip()
         text = f"PR #{pr['number']}: {pr['title']}\n\n{body}"
-        mem.add(text, user_id=user_id, metadata={
+        mem.add(text, user_id=user_id, infer=False, metadata={
             "source": f"PR #{pr['number']}",
             "title": pr["title"],
             "url": pr.get("html_url", ""),

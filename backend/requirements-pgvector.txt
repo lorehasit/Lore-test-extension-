@@ -2,4 +2,4 @@
 #   pip install -r requirements-pgvector.txt
 # Kept separate from requirements.txt so the default (Qdrant) install stays light
 # and never blocks on a psycopg wheel for your Python version.
-psycopg[binary]>=3.1
+psycopg[binary,pool]>=3.1

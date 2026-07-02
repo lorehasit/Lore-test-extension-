@@ -7,7 +7,9 @@ Run:
 Works with zero keys (mock mode). Add GROQ_API_KEY to .env to go live.
 """
 
-from fastapi import FastAPI
+import json
+
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -92,3 +94,24 @@ def inscribe(c: CommitPayload):
 def canon(user_id: str = "demo"):
     """Everything currently in the Canon."""
     return engine.list_memories(user_id)
+
+
+@app.post("/webhook/github")
+async def github_webhook(
+    request: Request,
+    x_github_event: str = Header(default=""),
+    x_hub_signature_256: str = Header(default=""),
+):
+    """GitHub App webhook — auto-captures merged PRs into the Canon."""
+    raw = await request.body()
+    if not engine.verify_github_signature(raw, x_hub_signature_256):
+        raise HTTPException(status_code=401, detail="invalid signature")
+    if x_github_event == "ping":
+        return {"ok": True, "pong": True}
+    if x_github_event != "pull_request":
+        return {"ok": True, "ignored": x_github_event}
+    try:
+        payload = json.loads(raw or b"{}")
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid JSON")
+    return engine.handle_pull_request_event(payload)

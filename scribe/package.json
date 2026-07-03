@@ -1,6 +1,6 @@
 {
   "name": "lore",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The Scribe — inscribe your commits' reasoning into your team's Canon, then recall it with /why.",
   "bin": { "lore": "bin/lore.js" },
   "type": "commonjs",

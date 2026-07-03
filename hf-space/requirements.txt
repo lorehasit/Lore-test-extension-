@@ -1,0 +1,11 @@
+# Core API (always needed)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-dotenv>=1.0
+requests>=2.31
+
+# Live mode — real memory (only exercised once GROQ_API_KEY is set).
+# Safe to install now; the backend runs in mock mode without any keys.
+mem0ai>=0.1.0
+groq>=0.3.0
+fastembed>=0.2.0

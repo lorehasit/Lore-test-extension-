@@ -3,7 +3,7 @@
 
 /**
  * Lore CLI.
- *   lore              launch the interactive REPL (banner + /why prompt)
+ *   lore              launch the interactive REPL (banner + /lore prompt)
  *   lore start        same as above (alias: chat)
  *   lore recall "q"   one-off question
  *   lore canon        show the Canon
@@ -29,33 +29,14 @@ const D = '\x1b[2m';
 const R = '\x1b[0m';
 const RED = '\x1b[31m';
 
+// LORE — block letters with a gem emblem on the side.
 const BANNER = `
-                       %%%%%%%
-                  %#+++=.  .:+*+*#%%
-               %#+=====:       :++=+#%
-             %#+======-          .++==#%
-            %*=======+.            .+==+%
-           %#========+               *==+%
-           #+========+              = *==*%
-           #=========+           .. : .*=+#
-           #=========*    ==      .:   *==*%
-           #+========+-             :. +==*%
-           #*=========+              :-*==*%         %@
-           %#**+======+-           .-. #==*%      @%%%%@
-           %%#++=======+:      .::.   :*=+%       @%
-           %%%#*++=====++.            #=+#%      @%@
-          %%  %%#*++++++*+.          **+#@       %@
-         %%     @%#***+++*+         =*+#%%      %%
-        @@        @%%##*****       :*+%@%%%    %%
-        @@        @@@@%#***##     .**%%   %% %%%
-        @      @@@@  @@@%%#**%   .+#%@     @%%
-        @@@@@@@           @%#*#.:*%%
-                            @%#**%@
-                             @@%@@
-                            %%#%%%
-                          @#***+**%
-                          %**+***#%
-                          @@%#+*#%`;
+   ██╗      ██████╗ ██████╗ ███████╗       ╔══════╗
+   ██║     ██╔═══██╗██╔══██╗██╔════╝       ║  ◆   ║
+   ██║     ██║   ██║██████╔╝█████╗         ║ ◆◆◆  ║
+   ██║     ██║   ██║██╔══██╗██╔══╝         ║  ◆   ║
+   ███████╗╚██████╔╝██║  ██║███████╗       ╚══════╝
+   ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝`;
 
 // ---------------------------------------------------------------- helpers
 function git(args) {
@@ -92,6 +73,12 @@ function arg(args, flag) {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : undefined;
 }
+// Strip a leading /lore or /why (both accepted) from a line.
+function stripCmd(raw) {
+  if (raw.startsWith('/lore')) return raw.slice(5).trim();
+  if (raw.startsWith('/why')) return raw.slice(4).trim();
+  return raw;
+}
 function printAnswer(data) {
   console.log('');
   console.log('  ' + wrap(data.answer || ''));
@@ -117,7 +104,7 @@ async function interactive(args) {
   try { count = (await api(cfg.backendUrl + '/canon', 'GET')).count; } catch { /* offline */ }
 
   console.log('');
-  console.log('   ' + B + O + 'LORE' + R + D + '  — your team’s decisions, remembered' + R);
+  console.log('   ' + D + 'decision memory  ·  every answer cited' + R);
   console.log('   ' + D + 'backend ' + R + cfg.backendUrl);
   console.log('   ' + D + 'canon ' + R + cfg.canon + D + '   whys ' + R + count);
   console.log('');
@@ -128,13 +115,17 @@ async function interactive(args) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: O + '/why ' + R,
+    prompt: O + '/lore ' + R,
   });
-  let busy = false;         // a recall is in flight
-  let exitRequested = false; // quit was hit mid-recall; exit once it finishes
+
+  let busy = false;          // a recall is in flight
+  let exitRequested = false; // quit hit mid-recall; exit once it finishes
   const doExit = () => {
     console.log('\n' + D + '  Canon closed. See you next decision.' + R + '\n');
-    process.exit(0);
+    // Defer so libuv finishes closing stdin before we exit (prevents a
+    // Windows UV_HANDLE_CLOSING assertion on quit).
+    process.exitCode = 0;
+    setImmediate(() => process.exit(0));
   };
 
   rl.prompt();
@@ -152,7 +143,7 @@ async function interactive(args) {
       return exitRequested ? doExit() : rl.prompt();
     }
 
-    const question = raw.startsWith('/why') ? raw.slice(4).trim() : raw;
+    const question = stripCmd(raw);
     if (!question) return rl.prompt();
 
     busy = true;
@@ -176,7 +167,7 @@ async function interactive(args) {
 
 function helpInline() {
   console.log('');
-  console.log('   ' + O + '/why <question>' + R + D + '   recall a decision (or just type the question)' + R);
+  console.log('   ' + O + '/lore <question>' + R + D + '  recall a decision (or just type the question)' + R);
   console.log('   ' + O + '/canon' + R + D + '            list what’s in the Canon' + R);
   console.log('   ' + O + '/clear' + R + D + '            redraw the screen' + R);
   console.log('   ' + O + '/quit' + R + D + '             exit' + R);

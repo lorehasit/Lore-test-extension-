@@ -86,7 +86,7 @@ class LoreViewProvider implements vscode.WebviewViewProvider {
 <body>
   <div id="log"></div>
   <form id="form">
-    <span class="slash">/why</span>
+    <span class="slash">/lore</span>
     <input id="input" placeholder="is auth built on short-lived tokens?" autocomplete="off" />
     <button type="submit">Ask</button>
   </form>

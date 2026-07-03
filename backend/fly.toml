@@ -1,0 +1,33 @@
+# Fly.io config for the Lore backend.
+# Change `app` to a globally-unique name before deploying.
+app = "lore-backend"
+primary_region = "bom"   # near you: bom=Mumbai, sin=Singapore, iad=US-East, fra=Frankfurt
+
+[build]
+  dockerfile = "Dockerfile"
+
+# Non-secret config (secrets go via `fly secrets set`, never in this file):
+[env]
+  PORT = "8080"
+  VECTOR_STORE = "pgvector"
+  GROQ_MODEL = "llama-3.1-8b-instant"
+  EMBEDDER_MODEL = "BAAI/bge-small-en-v1.5"
+  EMBEDDER_DIMS = "384"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0   # set to 1 to keep it warm (no cold starts) for demos
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"   # fastembed + onnxruntime need headroom; 256mb will OOM

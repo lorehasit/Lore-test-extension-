@@ -23,7 +23,7 @@ function esc(s) {
 function scroll() { log.scrollTop = log.scrollHeight; }
 
 function intro() {
-  const d = el('intro', 'Ask <code>/why</code> to recall a decision from your team’s Canon — answered with provenance.');
+  const d = el('intro', 'Ask <code>/lore</code> to recall a decision from your team’s Canon — answered with provenance.');
   const row = el('chip-row');
   EXAMPLES.forEach((q) => {
     const c = el('chip');
@@ -39,7 +39,7 @@ intro();
 function addUser(q) {
   const m = el('msg user');
   m.appendChild(el('who', 'You'));
-  m.appendChild(el('bubble', '<span class="slash">/why</span> ' + esc(q)));
+  m.appendChild(el('bubble', '<span class="slash">/lore</span> ' + esc(q)));
   log.appendChild(m);
   scroll();
 }

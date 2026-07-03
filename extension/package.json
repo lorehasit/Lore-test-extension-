@@ -2,7 +2,7 @@
   "name": "lore",
   "displayName": "Lore — decision memory",
   "description": "Ask /why any technical decision was made and get the real reasoning, with sources — inside VS Code.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "lore",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/lorehasit/Lore-test-extension-.git" },
@@ -10,6 +10,9 @@
   "categories": ["Other", "Machine Learning"],
   "main": "./out/extension.js",
   "activationEvents": ["onStartupFinished"],
+  "capabilities": {
+    "untrustedWorkspaces": { "supported": true }
+  },
   "contributes": {
     "viewsContainers": {
       "activitybar": [

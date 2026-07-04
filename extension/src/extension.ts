@@ -11,10 +11,22 @@ function backendUrl(): string {
   return raw.replace(/\/+$/, '');
 }
 
+/** The API key for a multi-tenant Lore backend (blank for single-tenant). */
+function apiKey(): string {
+  return String(vscode.workspace.getConfiguration('lore').get('apiKey', '')).trim();
+}
+
+/** Merge in the Lore key header when configured, so multi-tenant backends
+ *  answer from this user's account only. Harmless when the backend has no auth. */
+function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const key = apiKey();
+  return key ? { ...extra, 'X-Lore-Key': key } : { ...extra };
+}
+
 async function postWhy(question: string): Promise<any> {
   const res = await fetchFn(`${backendUrl()}/why`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ question }),
   });
   if (!res.ok) throw new Error(`backend responded ${res.status}`);
@@ -127,7 +139,9 @@ export function activate(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand('lore.loadDemo', async () => {
       try {
-        const res = await fetchFn(`${backendUrl()}/ingest/seed`, { method: 'POST' });
+        const res = await fetchFn(`${backendUrl()}/ingest/seed`, {
+          method: 'POST', headers: authHeaders(),
+        });
         const data = await res.json();
         vscode.window.showInformationMessage(
           `Lore: seeded the Canon (${data.ingested} Whys, ${data.mode} mode).`

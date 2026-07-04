@@ -41,6 +41,11 @@
           "type": "string",
           "default": "http://localhost:8000",
           "description": "URL of the Lore backend service (FastAPI)."
+        },
+        "lore.apiKey": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "API key for a multi-tenant Lore backend. Sent as the `X-Lore-Key` header so the backend answers from your account's Canon only. Leave blank for a single-tenant/local backend."
         }
       }
     }

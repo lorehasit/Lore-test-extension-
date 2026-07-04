@@ -4,6 +4,10 @@ uvicorn[standard]>=0.29
 python-dotenv>=1.0
 requests>=2.31
 
+# GitHub App auth — sign the app JWT (RS256) to mint installation tokens for
+# multi-repo backfill and posting the welcome comment.
+PyJWT[crypto]>=2.8
+
 # Live mode — real memory (only exercised once GROQ_API_KEY is set).
 # Safe to install now; the backend runs in mock mode without any keys.
 mem0ai>=0.1.0

@@ -30,3 +30,14 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      # GitHub App: verifies webhooks + powers multi-repo backfill/welcome comments.
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false
+      - key: GITHUB_APP_ID
+        sync: false
+      # Paste the .pem (base64-encoding it is safest for the dashboard).
+      - key: GITHUB_APP_PRIVATE_KEY
+        sync: false
+      # The org/user login the App is installed on — makes /why span all its repos.
+      - key: LORE_DEFAULT_ACCOUNT
+        sync: false

@@ -1,5 +1,17 @@
 # Lore — decision memory for engineering teams
 
+> **Archived (2026-07-05).** This monorepo prototype has been superseded by a
+> production rewrite split across three repos — all issues here were reviewed
+> and closed (solved, or transferred with a linked replacement):
+> - [lorehasit/lore-backend](https://github.com/lorehasit/lore-backend) — the FastAPI service
+> - [lorehasit/lore-cli](https://github.com/lorehasit/lore-cli) — the `npx lore` Scribe CLI
+> - [lorehasit/lore-vscode-extension](https://github.com/lorehasit/lore-vscode-extension) — the VS Code extension
+>
+> This repo is kept public and archived (read-only) for history — the mem0/Groq
+> retrieval design and product concepts here are unchanged in the rewrite,
+> just hardened for commercial-scale use (Postgres control plane, DB-backed
+> auth, a real job queue, CI). See the repos above for active development.
+
 **Ask `/why` a technical decision was made and get the real reasoning — the
 trade-offs, the constraints, who was involved — with sources.**
 

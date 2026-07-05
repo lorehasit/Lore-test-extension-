@@ -19,6 +19,7 @@ import os
 import re
 import threading
 import time
+from datetime import datetime, timezone
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -456,6 +457,7 @@ def handle_pull_request_event(payload: dict, user_id: str = "demo") -> dict:
         "canon": repo_full,
         "repo": repo_full,
         "url": url,
+        "date": (pr.get("merged_at") or "")[:10],
     })
     return {"ok": True, "captured": True, "pr": number, "repo": repo_full, "scope": scope}
 
@@ -546,6 +548,7 @@ def backfill_installation(installation_id: int, account: str,
                     "canon": full,
                     "repo": full,
                     "url": pr.get("html_url", ""),
+                    "date": (pr.get("merged_at") or "")[:10],
                 })
                 captured += 1
                 with _backfill_lock:
@@ -749,6 +752,7 @@ def ingest_repo(owner: str, repo: str, user_id: str = "demo", limit: int = 25) -
             "canon": f"{owner}/{repo}",
             "repo": f"{owner}/{repo}",
             "url": pr.get("html_url", ""),
+            "date": (pr.get("merged_at") or "")[:10],
         })
         n += 1
     return {"mode": "live", "repo": f"{owner}/{repo}", "ingested": n, "scope": scope}
@@ -787,15 +791,36 @@ def answer_why(question: str, user_id: str = "demo") -> dict:
         return {"answer": _NO_MATCH, "sources": [], "mode": "live",
                 "latency_s": round(time.time() - t0, 3)}
 
-    context = "\n".join(
-        f"- {h.get('memory', '')} (source: {h.get('metadata', {}).get('source', 'memory')})"
-        for h in hits
-    )
+    # Build the recall context. Each line carries the repo and merge date (from
+    # metadata) plus the noise-stripped, length-capped memory. The repo/date let
+    # the model resolve casual phrasing ("my repo", "yesterday"); the cap keeps a
+    # few large PR bodies from pushing the request past Groq's token limit (413).
+    def _line(h):
+        m = h.get("metadata", {}) or {}
+        body = _strip_bot_noise(h.get("memory", ""))[:700].strip()
+        if not body:
+            return ""
+        tags = " · ".join(t for t in (
+            f"repo {m.get('repo') or m.get('canon')}" if (m.get("repo") or m.get("canon")) else "",
+            f"merged {m.get('date')}" if m.get("date") else "",
+        ) if t)
+        head = f"[{tags}] " if tags else ""
+        return f"- {head}{body} (source: {m.get('source', 'memory')})"
+    context = "\n".join(l for l in (_line(h) for h in hits) if l)
+
+    scope = _resolve_user_id(user_id)
+    login = scope[3:] if scope.startswith("gh:") else scope
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     prompt = (
-        "You are Lore, an engineering team's decision memory. Using ONLY the recorded "
-        "decisions below, answer the question. Explain the reasoning and trade-offs, name "
-        "who was involved if recorded, and cite sources inline like [PR #482]. If the "
-        "decisions don't cover it, say so plainly.\n\n"
+        "You are Lore, an engineering team's decision memory. Answer the question "
+        "from the recorded decisions below.\n"
+        f"- This Canon belongs to the GitHub account `{login}`; \"my repo\" or the "
+        "account name refers to this user's own repositories.\n"
+        f"- Today is {today} (UTC); resolve relative dates like \"yesterday\" or "
+        "\"last week\" against each decision's `merged` date.\n"
+        "- Reason across the decisions to connect casual phrasing to the right PR, "
+        "explain the trade-offs, name who was involved if recorded, and cite sources "
+        "inline like [PR #482]. Only say it isn't covered if nothing plausibly matches.\n\n"
         f"Recorded decisions:\n{context}\n\nQuestion: {question}\n\nAnswer:"
     )
 
